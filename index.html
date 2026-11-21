@@ -101,6 +101,42 @@ table.qtb{width:auto;max-width:100%;border-collapse:collapse;font-size:inherit;f
  .res{gap:.4em}.res>div{padding:.5em .3em}
  .ft button{flex:1}
 }
+
+/* ===== LAYAR UJIAN: HP (tegak) & tablet kecil – satu kolom, nomor soal satu baris yang bisa digeser ===== */
+@media(max-width:899px){
+ .bar{flex-wrap:nowrap}
+ .bar b{flex:1 1 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.85em}
+ .tm{font-size:1.25em}
+ .bar button{padding:9px 14px;flex:0 0 auto}
+ .qt img{max-height:30vh}
+ .op{padding:.85em .9em}
+ .ft button{flex:1;padding:12px 14px}
+ .nv{max-height:none;overflow:visible;flex-wrap:nowrap}
+ .grp{min-width:0;flex:1 1 100%}
+ .grp div{position:relative;flex-wrap:nowrap;overflow-x:auto;padding-bottom:.35em;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+ .nv button{flex:0 0 auto;width:2.6em;height:2.2em;font-size:.85em}
+}
+/* ===== LAYAR UJIAN: LAPTOP / KOMPUTER – nomor soal di panel kanan, soal & pilihan memakai lebar layar ===== */
+@media(min-width:900px) and (min-height:521px){
+ .stage{display:grid;grid-template-columns:minmax(0,1fr) clamp(220px,20vw,340px);grid-template-rows:auto minmax(0,1fr) auto;gap:.7em 1.2em;font-size:clamp(15px,calc(9px + .38vw + .38vh),20px)}
+ .bar{grid-column:1/-1}
+ .qa{grid-column:1;grid-row:2;min-height:0}
+ .ft{grid-column:1;grid-row:3;justify-content:space-between}
+ .ft button{min-width:9em;padding:12px 22px}
+ .nv{grid-column:2;grid-row:2/4;max-height:none;overflow:auto;align-content:start;flex-direction:column;flex-wrap:nowrap}
+ .grp{min-width:0;flex:none;padding:.6em .7em}
+ .grp div{gap:.4em}
+ .nv button{width:2.6em;height:2.2em;font-size:.9em}
+ .qt img{max-height:55vh}
+ .op img{max-height:22vh}
+ /* layar lebar: soal di kiri, pilihan jawaban di kanan */
+ @media(min-width:1150px){
+  .qa.qq{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:1.6em;overflow:hidden;padding:0}
+  .qa.qq>.qt,.qa.qq>.ops{min-height:0;overflow:auto;padding:.4em .6em .4em 0;margin:0}
+  .qa.qq>.ops{padding-right:.2em}
+  .qa.qq .op:first-child{margin-top:0}
+ }
+}
 </style></head><body>
 <div id="app"></div><div id="test" hidden></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
@@ -169,10 +205,11 @@ const subOf=i=>'x';
 function paint(){const{qs,i,a,s}=T,q=qs[i],L='ABCDE';
  const groups=[[s.mapel,0,qs.length]];
  $('#test').innerHTML=`<div class="stage"><div class="bar"><b>${esc(T.nm)} · ${esc(s.name)}</b><span class="tm" id="tm">${fmt(T.end-Date.now())}</span><button class="d" onclick="if(confirm('Selesaikan ujian sekarang?'))finish()">Selesai</button></div>
- <div class="qa"><div class="qt"><b style="color:var(--g)">${esc(T.s.mapel)} · No. ${i+1}/${qs.length}</b><br>${rich(q.q)}</div>
- ${L.split('').filter(c=>q.o[c]!=null).map(c=>`<button class="op ${a[i]===c?'sel':''}" onclick="pick('${c}')"><i>${c}</i><span>${rich(q.o[c])}</span></button>`).join('')}</div>
+ <div class="qa qq"><div class="qt"><b style="color:var(--g)">${esc(T.s.mapel)} · No. ${i+1}/${qs.length}</b><br>${rich(q.q)}</div>
+ <div class="ops">${L.split('').filter(c=>q.o[c]!=null).map(c=>`<button class="op ${a[i]===c?'sel':''}" onclick="pick('${c}')"><i>${c}</i><span>${rich(q.o[c])}</span></button>`).join('')}</div></div>
  <div class="ft"><button class="s" onclick="go(${i-1})" ${i?'':'disabled'}>◀ Back</button>${i<qs.length-1?`<button onclick="go(${i+1})">Next ▶</button>`:`<button class="d" onclick="if(confirm('Selesaikan ujian?'))finish()">Selesai</button>`}</div>
- <div class="nv">${groups.map(g=>`<div class="grp"><small>${g[0]}</small><div>${qs.slice(g[1],Math.min(g[2],qs.length)).map((_,k)=>{const n=g[1]+k;return`<button class="${a[n]?'dn':''} ${n===i?'cur':''}" onclick="go(${n})">${n+1}</button>`}).join('')}</div></div>`).join('')}</div></div>`}
+ <div class="nv">${groups.map(g=>`<div class="grp"><small>${g[0]}</small><div>${qs.slice(g[1],Math.min(g[2],qs.length)).map((_,k)=>{const n=g[1]+k;return`<button class="${a[n]?'dn':''} ${n===i?'cur':''}" onclick="go(${n})">${n+1}</button>`}).join('')}</div></div>`).join('')}</div></div>`;
+ const cu=document.querySelector('.nv .cur');if(cu){const pr=cu.parentElement;if(pr.scrollWidth>pr.clientWidth)pr.scrollLeft=cu.offsetLeft-pr.clientWidth/2+cu.offsetWidth/2}}
 const pick=c=>{T.a[T.i]=c;paint()},go=n=>{T.i=n;paint()};
 async function finish(){if(!T||T.busy||T.done)return;T.busy=true;clearInterval(tick);
  $('#test').innerHTML='<div class="stage"><div class="qa" style="display:flex;align-items:center;justify-content:center"><h2>Mengirim jawaban...</h2></div></div>';
