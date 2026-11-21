@@ -90,6 +90,7 @@ table.qtb{width:auto;max-width:100%;border-collapse:collapse;font-size:inherit;f
 </style></head><body>
 <div id="app"></div><div id="test" hidden></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 /* Logo banner (tertanam langsung) */
@@ -174,7 +175,7 @@ const TABS=[['siswa','Siswa'],['paket','Paket Soal'],['sesi','Sesi Ujian'],['has
 const shell=()=>`<div class="wrap"><div class="top"><h2 style="display:flex;align-items:center;gap:10px"><img src="${BANNER}" alt="" style="height:40px;width:auto">Admin Asesmen SDN 1 Dauhwaru</h2><button class="s" onclick="out()">Keluar</button></div><div class="tabs">${TABS.map(t=>`<button class="${tab===t[0]?'on':''}" onclick="tab='${t[0]}';edS=null;vw=null;admin()">${t[1]}</button>`).join('')}</div>`;
 async function admin(){A.hidden=false;A.innerHTML=shell()+'<div class="card">Memuat...</div></div>';let h=shell();
  if(tab==='siswa'){const{data:u}=await sb.from('siswa').select('id,nis,nama,kelas').order('kelas').order('nama');const L=(u||[]).filter(x=>!fk||x.kelas===fk);
-  h+=`<div class="card"><b>Daftarkan siswa</b><p>Tempel daftar siswa, satu baris satu siswa, urutan: NIS, Nama, Kelas (1-6), Password. Pemisah koma atau tab (bisa disalin langsung dari Excel). NIS yang sudah ada akan diperbarui.</p><textarea id="bulk" rows="6" style="width:100%;padding:12px;background:#0c1730;border:1px solid var(--ln);border-radius:10px;color:var(--tx);font:inherit" placeholder="1234567890, Ni Made Ayu, 4, ayu1234"></textarea><div class="err" id="e"></div><button onclick="addU()">Simpan siswa</button></div>
+  h+=`<div class="card"><b>Daftarkan siswa</b><p>Cara termudah: unduh template Excel, isi data siswa (NIS, Nama, Kelas 1-6, Password), lalu unggah kembali. Atau tempel daftar langsung di kotak bawah (satu baris satu siswa, pemisah koma atau tab). NIS yang sudah ada akan diperbarui.</p><div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:12px"><button class="s" onclick="dlTpl()">Unduh template Excel</button><label class="s" style="cursor:pointer;padding:10px 16px;border:1px solid var(--ln);border-radius:10px;margin:0;display:inline-block">Unggah file Excel (.xlsx)<input type="file" accept=".xlsx,.xls,.csv" style="display:none" onchange="upXl(this)"></label></div><textarea id="bulk" rows="6" style="width:100%;padding:12px;background:#0c1730;border:1px solid var(--ln);border-radius:10px;color:var(--tx);font:inherit" placeholder="1234567890, Ni Made Ayu, 4, ayu1234"></textarea><div class="err" id="e"></div><button onclick="addU()">Simpan siswa</button></div>
   <div class="card" style="overflow:auto"><div class="top"><b>${L.length} siswa</b>${fkSel()}</div><table><tr><th>NIS</th><th>Nama</th><th>Kelas</th><th></th></tr>${L.map(x=>`<tr><td>${esc(x.nis)}</td><td>${esc(x.nama)}</td><td>${x.kelas}</td><td style="white-space:nowrap"><button class="s" onclick="resetU(${x.id})">Reset password</button> <button class="d" onclick="delU(${x.id})">Hapus</button></td></tr>`).join('')||'<tr><td colspan=4>Belum ada siswa.</td></tr>'}</table></div>`}
  else if(tab==='paket'){const{data:pl}=await sb.from('paket_soal').select('id,kelas,mapel,name,jml').order('kelas').order('mapel').order('id'),pd=pend.x,L=(pl||[]).filter(x=>!fk||x.kelas===fk);
   h+=`<div class="card"><b>Unggah paket soal baru</b><p>Upload file Word (.docx). Format: nomor soal "1.", opsi "A." sampai "E.", kunci "Kunci: B", pembahasan "Pembahasan: ..." (opsional). Gambar dan tabel ikut terbaca. Setiap unggahan menjadi paket baru.</p>
@@ -204,6 +205,19 @@ async function admin(){A.hidden=false;A.innerHTML=shell()+'<div class="card">Mem
   h+=`<div class="card" style="overflow:auto"><div class="top"><b>Hasil dan nilai · ${L.length}</b>${fkSel()}</div><table><tr><th>Waktu</th><th>Nama</th><th>Kelas</th><th>Mapel</th><th>Sesi</th><th>Benar</th><th>Nilai</th></tr>${L.map(r=>`<tr><td>${new Date(r.created_at).toLocaleString('id-ID')}</td><td>${esc(r.nm)}</td><td>${r.kelas}</td><td>${esc(r.mapel)}</td><td>${esc(r.ses)}</td><td>${r.benar}/${r.tot}</td><td><b>${r.skor}</b></td></tr>`).join('')||'<tr><td colspan=7>Belum ada hasil.</td></tr>'}</table>${(rs||[]).length?'<br><button class="d" onclick="clearR()">Hapus semua hasil</button>':''}</div>`}
  A.innerHTML=h+'</div>'}
 const err=m=>{const e=$('#e');if(e)e.textContent=m};
+function dlTpl(){if(!window.XLSX)return alert('Pustaka Excel belum termuat. Muat ulang halaman lalu coba lagi.');
+ const d=[['NIS','Nama','Kelas','Password'],['1234567890','Contoh Siswa Satu',1,'siswa1234'],['1234567891','Contoh Siswa Dua',1,'siswa5678']],ws=XLSX.utils.aoa_to_sheet(d);
+ ws['!cols']=[{wch:18},{wch:36},{wch:8},{wch:18}];for(let r=1;r<d.length;r++){ws['A'+(r+1)]={t:'s',v:d[r][0]}}
+ const ps=XLSX.utils.aoa_to_sheet([['Petunjuk'],['1. Isi sheet Siswa: NIS, Nama, Kelas (angka 1-6), Password (minimal 4 karakter).'],['2. Hapus baris contoh (yang namanya diawali "Contoh") atau biarkan, baris itu otomatis dilewati.'],['3. Simpan, lalu unggah file ini di menu Siswa pada website admin.'],['4. Boleh membuat banyak sheet (misalnya satu sheet per kelas), semua sheet dibaca.']]);ps['!cols']=[{wch:100}];
+ const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Siswa');XLSX.utils.book_append_sheet(wb,ps,'Petunjuk');XLSX.writeFile(wb,'Template_Siswa_SDN1Dauhwaru.xlsx')}
+async function upXl(inp){const f=inp.files[0];inp.value='';if(!f)return;if(!window.XLSX)return err('Pustaka Excel belum termuat. Muat ulang halaman.');
+ try{const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});let out=[],skip=0;
+  wb.SheetNames.forEach(n=>{if(/^petunjuk$/i.test(n))return;XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:false,defval:''}).forEach(r=>{const c=r.map(x=>String(x).trim());if(!c[0]&&!c[1])return;
+   if(!(+c[2]>=1&&+c[2]<=6)||/^contoh/i.test(c[1])){skip++;return}
+   out.push([c[0],c[1],c[2],c.slice(3).filter(x=>x).join(',')].join('\t'))})});
+  if(!out.length)return err('Tidak ada baris siswa yang terbaca. Pastikan memakai template: NIS, Nama, Kelas (1-6), Password.');
+  $('#bulk').value=out.join('\n');err(out.length+' siswa terbaca dari file'+(skip?' ('+skip+' baris judul/contoh dilewati)':'')+'. Periksa daftarnya, lalu klik "Simpan siswa".')}
+ catch(e){err('Gagal membaca file: '+e.message)}}
 async function addU(){const rows=$('#bulk').value.split('\n').map(l=>l.split(/[\t,;]/).map(x=>x.trim())).filter(r=>r.length>=4&&r[0]).map(r=>({nis:r[0],nama:r[1],kelas:+r[2],pw:r.slice(3).join(',')}));
  if(!rows.length)return err('Tidak ada baris yang valid. Format: NIS, Nama, Kelas, Password.');
  if(rows.some(r=>!(r.kelas>=1&&r.kelas<=6)||r.pw.length<4))return err('Kelas harus 1-6 dan password minimal 4 karakter.');
