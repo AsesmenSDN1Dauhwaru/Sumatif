@@ -25,6 +25,8 @@ h1{font-size:clamp(26px,4vw,40px);margin:0;line-height:1.15}
 .lt h1 span{display:block}
 .lt .sub{margin:12px 0 0;text-align:center;font-size:clamp(10px,1.45vw,14px);letter-spacing:.5em;padding-left:.5em;white-space:nowrap}
 .lt .sub::after{content:"";display:block;width:56px;height:3px;border-radius:3px;background:var(--g);margin:14px auto 0;opacity:.8}
+.cr{text-align:center;margin-top:18px;font-size:12px;letter-spacing:.04em;color:var(--mu)}
+.cr::before{content:"";display:block;width:40px;height:1px;background:var(--ln);margin:0 auto 12px}
 .cover .card{margin:0}
 @media(max-width:800px){.cover{min-height:auto;padding-top:28px}.cover img{max-width:420px;margin:0 auto;display:block}}
 .card{background:var(--card);border:1px solid var(--ln);border-radius:16px;padding:20px;margin:14px 0}
@@ -143,7 +145,7 @@ function login(m){
  A.innerHTML=`<div class="wrap cover"><div>${BANNER?`<img src="${BANNER}" alt="SDN 1 Dauhwaru" onerror="this.outerHTML='<div class=ph></div>'">`:'<div class="ph"></div>'}</div>
  <div><div class="lt"><h1><span>E-ASESMEN</span><span>SDN 1 DAUHWARU</span></h1><div class="sub">UJIAN BERBASIS KOMPUTER</div></div>
  <div class="card"><label>NIS (admin: ketik admin)</label><input id="u" autocomplete="username" autocapitalize="none"><label>Password</label><input id="p" type="password" autocomplete="current-password" onkeydown="if(event.key=='Enter')doLogin()">
- <div class="err" id="e">${m||''}</div><button id="lb" onclick="doLogin()" style="width:100%">Masuk</button></div></div></div>`}
+ <div class="err" id="e">${m||''}</div><button id="lb" onclick="doLogin()" style="width:100%">Masuk</button></div><div class="cr">Hak Cipta &copy; I Wayan Abriana Karya, S.Pd</div></div></div>`}
 async function doLogin(){const u=$('#u').value.trim().toLowerCase(),p=$('#p').value;if(!u||!p)return $('#e').textContent='NIS dan password wajib diisi.';
  $('#lb').disabled=true;$('#e').textContent='Memeriksa...';
  if(u==='admin'){const{error}=await sb.auth.signInWithPassword({email:u+DOM,password:p});if(error){login('Password admin salah.');return}me={role:'admin',name:'Admin'};return admin()}
