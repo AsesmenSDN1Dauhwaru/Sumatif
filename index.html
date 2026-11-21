@@ -15,6 +15,18 @@ h1,h2,h3,b,th{font-weight:800}
 .cover .ph{aspect-ratio:3/1;border-radius:16px;background:var(--card)}
 h1{font-size:clamp(26px,4vw,40px);margin:0;line-height:1.15}
 .sub{color:var(--g);letter-spacing:.35em;font-weight:700;margin:8px 0 22px;text-align:right}
+/* ===== judul login: simetris & rata tengah ===== */
+.cover>div:last-child{width:100%;max-width:560px;justify-self:center}
+.lt{text-align:center;margin-bottom:22px}
+.lt h1{font-size:clamp(26px,4.2vw,44px);line-height:1.12;letter-spacing:.01em;text-wrap:balance}
+.lt h1{background:linear-gradient(135deg,#e9d5ff 0%,#c084fc 30%,#a855f7 55%,#7c3aed 80%,#d946ef 100%);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent;filter:drop-shadow(0 0 10px #a855f7aa) drop-shadow(0 0 26px #7c3aed88);animation:glowU 3s ease-in-out infinite alternate}
+@keyframes glowU{from{filter:drop-shadow(0 0 7px #a855f788) drop-shadow(0 0 18px #7c3aed66)}to{filter:drop-shadow(0 0 14px #c084fccc) drop-shadow(0 0 34px #a855f7aa)}}
+@media(prefers-reduced-motion:reduce){.lt h1{animation:none}}
+.lt h1 span{display:block}
+.lt .sub{margin:12px 0 0;text-align:center;font-size:clamp(10px,1.45vw,14px);letter-spacing:.5em;padding-left:.5em;white-space:nowrap}
+.lt .sub::after{content:"";display:block;width:56px;height:3px;border-radius:3px;background:var(--g);margin:14px auto 0;opacity:.8}
+.cover .card{margin:0}
+@media(max-width:800px){.cover{min-height:auto;padding-top:28px}.cover img{max-width:420px;margin:0 auto;display:block}}
 .card{background:var(--card);border:1px solid var(--ln);border-radius:16px;padding:20px;margin:14px 0}
 input,select{width:100%;padding:12px 14px;margin:6px 0 12px;background:#0c1730;border:1px solid var(--ln);border-radius:10px;color:var(--tx);font:inherit}
 input:focus,select:focus{outline:0;border-color:var(--g);box-shadow:0 0 0 3px #2af59833}
@@ -129,7 +141,7 @@ const schedSt=x=>{if(!x.aktif)return'Nonaktif';if(!x.start_at)return'<span class
 
 function login(m){
  A.innerHTML=`<div class="wrap cover"><div>${BANNER?`<img src="${BANNER}" alt="SDN 1 Dauhwaru" onerror="this.outerHTML='<div class=ph></div>'">`:'<div class="ph"></div>'}</div>
- <div><h1>ASESMEN SDN 1 DAUHWARU</h1><div class="sub">UJIAN BERBASIS KOMPUTER</div>
+ <div><div class="lt"><h1><span>E-ASESMEN</span><span>SDN 1 DAUHWARU</span></h1><div class="sub">UJIAN BERBASIS KOMPUTER</div></div>
  <div class="card"><label>NIS (admin: ketik admin)</label><input id="u" autocomplete="username" autocapitalize="none"><label>Password</label><input id="p" type="password" autocomplete="current-password" onkeydown="if(event.key=='Enter')doLogin()">
  <div class="err" id="e">${m||''}</div><button id="lb" onclick="doLogin()" style="width:100%">Masuk</button></div></div></div>`}
 async function doLogin(){const u=$('#u').value.trim().toLowerCase(),p=$('#p').value;if(!u||!p)return $('#e').textContent='NIS dan password wajib diisi.';
