@@ -148,6 +148,36 @@ table.qtb{width:auto;max-width:100%;border-collapse:collapse;font-size:inherit;f
 .fst{display:none}
 @media(min-width:900px){.fst{display:inline}}
 #fsb{padding:9px 12px;flex:0 0 auto}
+
+/* ===== tampilan ujian: panel kartu di atas gradasi, tombol zoom, ikon layar penuh ===== */
+.stage{background:linear-gradient(rgba(8,14,30,.34),rgba(8,14,30,.34)),var(--grad)!important;
+ padding:max(12px,env(safe-area-inset-top,0px)) max(16px,2vw,env(safe-area-inset-right,0px)) max(12px,env(safe-area-inset-bottom,0px)) max(16px,2vw,env(safe-area-inset-left,0px));
+ font-size:calc(clamp(14px,calc(10px + .45vw + .45vh),22px)*var(--z,1))}
+.bar{background:rgba(8,14,30,.82);border:1px solid #ffffff2a;border-radius:14px;padding:.5em .8em;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px)}
+.ctl{display:flex;align-items:center;gap:.45em;margin-left:auto}
+.ctl button{display:inline-flex;align-items:center;justify-content:center;gap:.2em;padding:.5em .75em;font-size:.9em;line-height:1}
+.zb{font-weight:800;min-width:2.6em}.zb small{font-size:.8em;font-weight:800}
+#fsb svg{width:1.15em;height:1.15em}
+.qa.qq>.qt{background:rgba(8,14,30,.82);border:1px solid #ffffff2a;border-radius:16px;padding:1em 1.2em;margin-bottom:.8em}
+.ops{display:flex;flex-direction:column;gap:.7em}
+.op{margin:0;background:rgba(10,18,40,.88);border:1px solid #ffffff33;border-radius:14px;padding:.85em 1em;font-size:1.05em;font-weight:400;min-height:3.2em}
+.op i{background:#2af59822;border-radius:8px;min-width:1.9em;height:1.9em;display:inline-flex;align-items:center;justify-content:center;font-size:1em}
+.op.sel i{background:#fff59d33}
+.grp{background:rgba(8,14,30,.82);border-color:#ffffff2a;border-radius:14px}
+.nv button{background:#1b2c52}
+.ft button{font-size:1.05em;padding:.8em 1.4em;border-radius:12px}
+.ft .s{background:rgba(8,14,30,.82)}
+@media(min-width:900px) and (min-height:521px){
+ .stage{font-size:calc(clamp(16px,calc(10px + .42vw + .42vh),23px)*var(--z,1))}
+ .qa.qq>.ops{justify-content:center}
+}
+@media(max-width:899px){
+ .bar{flex-wrap:wrap!important;row-gap:.4em}
+ .bar b{flex:1 1 100%!important}
+ .tm{font-size:1.2em}
+ .qa.qq>.qt{padding:.8em .9em}
+ .ctl button{padding:.55em .7em}
+}
 </style></head><body>
 <div id="app"></div><div id="test" hidden></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
@@ -209,7 +239,11 @@ function fsOK(){const e=document.documentElement;return !!(e.requestFullscreen||
 function fsOn(){return !!(document.fullscreenElement||document.webkitFullscreenElement)}
 function fsToggle(){const d=document,e=d.documentElement;try{if(fsOn()){(d.exitFullscreen||d.webkitExitFullscreen).call(d)}else{const r=(e.requestFullscreen||e.webkitRequestFullscreen).call(e);if(r&&r.catch)r.catch(()=>{})}}catch(_){}}
 function fsExit(){if(fsOn()){try{(document.exitFullscreen||document.webkitExitFullscreen).call(document)}catch(_){}}}
-['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{const b=document.getElementById('fsb');if(b)b.firstChild.nodeValue=fsOn()?'🗗':'⛶'}));
+const IC_EXP='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>',IC_CMP='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>';
+const fsBtn=()=>fsOn()?IC_CMP+'<span class="fst"> Perkecil layar</span>':IC_EXP+'<span class="fst"> Perbesar layar</span>';
+['fullscreenchange','webkitfullscreenchange'].forEach(ev=>document.addEventListener(ev,()=>{const b=document.getElementById('fsb');if(b){b.innerHTML=fsBtn();b.title=fsOn()?'Perkecil layar':'Perbesar layar'}}));
+let ZM=1;try{ZM=+localStorage.getItem('zm')||1}catch(_){}
+function zoom(d){const st=[.8,.9,1,1.15,1.3,1.5];let k=st.findIndex(v=>v>=ZM-.001);if(k<0)k=2;ZM=st[Math.max(0,Math.min(st.length-1,k+d))];try{localStorage.setItem('zm',ZM)}catch(_){}if(T&&!T.done&&$('#test').querySelector('.qq'))paint()}
 async function startT(){const tk=$('#tk').value.trim();if(!tk)return $('#e').textContent='TOKEN wajib diisi.';
  if(fsOK()&&!fsOn()){try{const e=document.documentElement,r=(e.requestFullscreen||e.webkitRequestFullscreen).call(e);if(r&&r.catch)r.catch(()=>{})}catch(_){}}
  $('#sb').disabled=true;$('#e').textContent='Memuat soal...';
@@ -221,7 +255,7 @@ const fmt=ms=>{const t=Math.max(0,Math.ceil(ms/1000));return[Math.floor(t/3600),
 const subOf=i=>'x';
 function paint(){const{qs,i,a,s}=T,q=qs[i],L='ABCDE';
  const groups=[[s.mapel,0,qs.length]];
- $('#test').innerHTML=`<div class="stage"><div class="bar"><b>${esc(T.nm)} · ${esc(s.name)}</b><span class="tm" id="tm">${fmt(T.end-Date.now())}</span>${fsOK()?`<button class="s" id="fsb" onclick="fsToggle()" title="Layar penuh">${fsOn()?'🗗':'⛶'}<span class="fst"> Layar penuh</span></button>`:''}<button class="d" onclick="if(confirm('Selesaikan ujian sekarang?'))finish()">Selesai</button></div>
+ $('#test').innerHTML=`<div class="stage" style="--z:${ZM}"><div class="bar"><b>${esc(T.nm)} · ${esc(s.name)}</b><span class="tm" id="tm">${fmt(T.end-Date.now())}</span><span class="ctl"><button class="s zb" onclick="zoom(-1)" title="Perkecil tulisan" aria-label="Perkecil tulisan">A<small>−</small></button><button class="s zb" onclick="zoom(1)" title="Perbesar tulisan" aria-label="Perbesar tulisan">A<small>+</small></button>${fsOK()?`<button class="s" id="fsb" onclick="fsToggle()" title="${fsOn()?'Perkecil layar':'Perbesar layar'}" aria-label="Layar penuh">${fsBtn()}</button>`:''}<button class="d" onclick="if(confirm('Selesaikan ujian sekarang?'))finish()">Selesai</button></span></div>
  <div class="qa qq"><div class="qt"><b style="color:var(--g)">${esc(T.s.mapel)} · No. ${i+1}/${qs.length}</b><br>${rich(q.q)}</div>
  <div class="ops">${L.split('').filter(c=>q.o[c]!=null).map(c=>`<button class="op ${a[i]===c?'sel':''}" onclick="pick('${c}')"><i>${c}</i><span>${rich(q.o[c])}</span></button>`).join('')}</div></div>
  <div class="ft"><button class="s" onclick="go(${i-1})" ${i?'':'disabled'}>◀ Back</button>${i<qs.length-1?`<button onclick="go(${i+1})">Next ▶</button>`:`<button class="d" onclick="if(confirm('Selesaikan ujian?'))finish()">Selesai</button>`}</div>
