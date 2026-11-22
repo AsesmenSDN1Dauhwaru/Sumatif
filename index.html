@@ -281,9 +281,9 @@ async function addU(){const rows=$('#bulk').value.split('\n').map(l=>l.split(/[\
  if(!rows.length)return err('Tidak ada baris yang valid. Format: NIS, Nama, Kelas, Password.');
  if(rows.some(r=>!(r.kelas>=1&&r.kelas<=6)||r.pw.length<4))return err('Kelas harus 1-6 dan password minimal 4 karakter.');
  err('Menyimpan...');const{data,error}=await sb.rpc('admin_tambah_siswa',{p_rows:rows});if(error)return err(error.message);alert(data+' siswa disimpan.');admin()}
-async function hapusRow(tbl,col,val){let q=sb.from(tbl).delete();q=val===null?q.not(col,'is',null):q.eq(col,val);const{data,error}=await q.select();
+async function hapusRow(tbl,col,val){let q=sb.from(tbl).delete({count:'exact'});q=val===null?q.not(col,'is',null):q.eq(col,val);const{count,error}=await q;
  if(error){alert('Gagal menghapus: '+error.message+'\n\nJalankan SQL perbaikan izin hapus di Supabase (SQL Editor).');return false}
- if(!data||!data.length){alert('Tidak ada data yang terhapus. Kemungkinan izin hapus (RLS/policy) di Supabase belum diatur. Jalankan SQL perbaikan izin hapus.');return false}
+ if(!count){alert('Tidak ada data yang terhapus. Kemungkinan izin hapus (RLS/policy) di Supabase belum diatur. Jalankan SQL perbaikan izin hapus.');return false}
  return true}
 async function delU(id){if(!confirm('Hapus siswa ini beserta nilainya?'))return;await hapusRow('siswa','id',id);admin()}
 async function resetU(id){const p=prompt('Password baru (min. 4 karakter):');if(!p||p.length<4)return;const{error}=await sb.rpc('admin_reset_pw',{p_id:id,p_pw:p});alert(error?error.message:'Password diganti.')}
