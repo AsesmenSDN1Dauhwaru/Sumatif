@@ -178,6 +178,10 @@ table.qtb{width:auto;max-width:100%;border-collapse:collapse;font-size:inherit;f
  .qa.qq>.qt{padding:.8em .9em}
  .ctl button{padding:.55em .7em}
 }
+
+.qa.qq>.qt{scrollbar-width:thin}
+.qt img{width:auto;max-width:100%;object-fit:contain}
+.qa.qq{overflow-x:hidden}
 </style></head><body>
 <div id="app"></div><div id="test" hidden></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
@@ -260,7 +264,14 @@ function paint(){const{qs,i,a,s}=T,q=qs[i],L='ABCDE';
  <div class="ops">${L.split('').filter(c=>q.o[c]!=null).map(c=>`<button class="op ${a[i]===c?'sel':''}" onclick="pick('${c}')"><i>${c}</i><span>${rich(q.o[c])}</span></button>`).join('')}</div></div>
  <div class="ft"><button class="s" onclick="go(${i-1})" ${i?'':'disabled'}>◀ Back</button>${i<qs.length-1?`<button onclick="go(${i+1})">Next ▶</button>`:`<button class="d" onclick="if(confirm('Selesaikan ujian?'))finish()">Selesai</button>`}</div>
  <div class="nv">${groups.map(g=>`<div class="grp"><small>${g[0]}</small><div>${qs.slice(g[1],Math.min(g[2],qs.length)).map((_,k)=>{const n=g[1]+k;return`<button class="${a[n]?'dn':''} ${n===i?'cur':''}" onclick="go(${n})">${n+1}</button>`}).join('')}</div></div>`).join('')}</div></div>`;
- const cu=document.querySelector('.nv .cur');if(cu){const pr=cu.parentElement;if(pr.scrollWidth>pr.clientWidth)pr.scrollLeft=cu.offsetLeft-pr.clientWidth/2+cu.offsetWidth/2}}
+ const cu=document.querySelector('.nv .cur');if(cu){const pr=cu.parentElement;if(pr.scrollWidth>pr.clientWidth)pr.scrollLeft=cu.offsetLeft-pr.clientWidth/2+cu.offsetWidth/2}fitQ()}
+function fitQ(){const t=$('#test');if(!t)return;const qa=t.querySelector('.qa.qq');if(!qa)return;
+ const qt=qa.querySelector('.qt'),ops=qa.querySelector('.ops'),grid=getComputedStyle(qa).display==='grid';
+ const boxes=grid?[qt,ops]:[qa],imgs=[...qa.querySelectorAll('.qt img')];
+ const over=()=>boxes.some(b=>b&&b.scrollHeight>b.clientHeight+2);
+ imgs.forEach(im=>{im.style.maxHeight='';if(!im.complete)im.onload=()=>fitQ()});
+ let n=0;while(over()&&n++<40){let ch=false;imgs.forEach(im=>{const h=im.getBoundingClientRect().height;if(h>70){im.style.maxHeight=Math.max(70,h*.93)+'px';ch=true}});if(!ch)break}}
+window.addEventListener('resize',()=>{if(typeof T!=='undefined'&&T&&!T.done&&$('#test')&&!$('#test').hidden)fitQ()});
 const pick=c=>{T.a[T.i]=c;paint()},go=n=>{T.i=n;paint()};
 async function finish(){if(!T||T.busy||T.done)return;T.busy=true;clearInterval(tick);
  $('#test').innerHTML='<div class="stage"><div class="qa" style="display:flex;align-items:center;justify-content:center"><h2>Mengirim jawaban...</h2></div></div>';
