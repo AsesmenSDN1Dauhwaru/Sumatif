@@ -271,7 +271,7 @@ async function startT(){const tk=$('#tk').value.trim();if(!tk)return $('#e').tex
  const{data:s,error}=await sb.rpc('mulai_ujian',{p_lt:me.lt,p_token:tk});
  if(error){fsExit();home(error.message);return}
  T={s,nm:me.name,qs:s.qs,a:{},i:0,end:Date.now()+s.dur*60000,done:false,busy:false};
- $('#test').hidden=false;A.hidden=true;paint();tick=setInterval(()=>{const l=T.end-Date.now();if(l<=0)return finish();const e=$('#tm');if(e)e.textContent=fmt(l)},500)}
+ $('#test').hidden=false;A.hidden=true;paint();lvPing();tick=setInterval(()=>{const l=T.end-Date.now();if(l<=0)return finish();const e=$('#tm');if(e)e.textContent=fmt(l)},500)}
 const fmt=ms=>{const t=Math.max(0,Math.ceil(ms/1000));return[Math.floor(t/3600),Math.floor(t/60)%60,t%60].map(n=>String(n).padStart(2,'0')).join(':')};
 const subOf=i=>'x';
 function paint(){const{qs,i,a,s}=T,q=qs[i],L='ABCDE';
@@ -289,7 +289,8 @@ function fitQ(){const t=$('#test');if(!t)return;const qa=t.querySelector('.qa.qq
  imgs.forEach(im=>{im.style.maxHeight='';if(!im.complete)im.onload=()=>fitQ()});
  let n=0;while(over()&&n++<40){let ch=false;imgs.forEach(im=>{const h=im.getBoundingClientRect().height;if(h>70){im.style.maxHeight=Math.max(70,h*.93)+'px';ch=true}});if(!ch)break}}
 window.addEventListener('resize',()=>{if(typeof T!=='undefined'&&T&&!T.done&&$('#test')&&!$('#test').hidden)fitQ()});
-const pick=c=>{T.a[T.i]=c;paint()},go=n=>{T.i=n;paint()};
+const lvPing=()=>{try{if(T&&!T.done)sb.rpc('live_ping',{p_lt:me.lt,p_sid:T.s.id,p_answered:Object.keys(T.a).length}).then(()=>{},()=>{})}catch(_){}};
+const pick=c=>{T.a[T.i]=c;paint();lvPing()},go=n=>{T.i=n;paint()};
 async function finish(){if(!T||T.busy||T.done)return;T.busy=true;clearInterval(tick);
  $('#test').innerHTML='<div class="stage"><div class="qa" style="display:flex;align-items:center;justify-content:center"><h2>Mengirim jawaban...</h2></div></div>';
  const{data:r,error}=await sb.rpc('kirim_ujian',{p_lt:me.lt,p_sid:T.s.id,p_ans:T.a});
@@ -385,10 +386,6 @@ const LV={on:false,k:0,m:'',rows:[],seen:null,timer:null,ch:null,pub:false};
 const lvLink=()=>location.href.split('#')[0]+'#live'+(LV.k||'');
 function liveStop(){LV.on=false;clearInterval(LV.timer);LV.timer=null;if(LV.ch){try{sb.removeChannel(LV.ch)}catch(_){}LV.ch=null}}
 async function liveFetch(){
- const{data:{session}}=await sb.auth.getSession();
- if(session&&!LV.pub){
-  const r=await sb.from('results').select('nm,kelas,mapel,ses,skor,benar,tot,kktp,created_at').order('created_at',{ascending:false}).limit(1000);
-  return r.error?{err:r.error.message}:{rows:(r.data||[]).filter(x=>!LV.k||x.kelas===LV.k)}}
  const r=await sb.rpc('live_score',{p_kelas:LV.k||0,p_mapel:''});
  if(r.error)return{err:r.error.message,rpc:1};
  return{rows:Array.isArray(r.data)?r.data:[]}}
@@ -399,7 +396,7 @@ function liveStart(boxId,pub){
   <select id="lvk" style="width:auto;margin:0" onchange="LV.k=+this.value;LV.m='';LV.seen=null;const l=document.getElementById('lvlink');if(l)l.value=lvLink();lvLoad()"><option value="0">Semua kelas</option>${[1,2,3,4,5,6].map(k=>`<option value="${k}"${LV.k===k?' selected':''}>Kelas ${k}</option>`).join('')}</select>
   <select id="lvm" style="width:auto;margin:0" onchange="LV.m=this.value;lvDraw()"><option value="">Semua mapel</option></select>
   ${fsOK()?'<button class="s" onclick="fsToggle()">Layar penuh</button>':''}</span></div><div id="lvbody" style="margin-top:6px">Memuat...</div>`;
- lvLoad();LV.timer=setInterval(lvLoad,4000);
+ lvLoad();LV.timer=setInterval(lvLoad,3000);
  try{LV.ch=sb.channel('lv'+Date.now()).on('postgres_changes',{event:'*',schema:'public',table:'results'},()=>lvLoad()).subscribe()}catch(_){}}
 async function lvLoad(){
  if(!LV.on)return;const r=await liveFetch(),el=document.getElementById('lvbody');if(!LV.on||!el)return;
@@ -410,14 +407,19 @@ async function lvLoad(){
  lvDraw();const t=document.getElementById('lvt');if(t)t.textContent='Diperbarui '+new Date().toLocaleTimeString('id-ID')}
 function lvDraw(){
  const el=document.getElementById('lvbody');if(!el)return;
- const L=LV.rows.filter(x=>!LV.m||x.mapel===LV.m).sort((a,b)=>(b.skor-a.skor)||(new Date(a.created_at)-new Date(b.created_at)));
- const key=r=>[r.nm,r.kelas,r.mapel,r.ses,r.created_at].join('|'),first=LV.seen===null;if(first)LV.seen=new Set();
- const n=L.length,avg=n?(L.reduce((a,r)=>a+(+r.skor||0),0)/n):0,mx=n?Math.max(...L.map(r=>+r.skor||0)):0,kt=L.filter(r=>r.kktp!=null),lu=kt.filter(r=>r.skor>=r.kktp).length;
- const med=['🥇','🥈','🥉'];
- const rows=L.map((r,i)=>{const k=key(r),nw=!first&&!LV.seen.has(k);LV.seen.add(k);
-  return`<tr class="${nw?'nw':''}"><td class="rk">${i<3?med[i]:i+1}</td><td><b>${esc(r.nm)}</b></td><td>${r.kelas}</td><td>${esc(r.mapel)}</td><td><div class="lvbar"><i style="width:${Math.max(0,Math.min(100,+r.skor||0))}%"></i></div></td><td class="sc">${r.skor}</td><td>${stKktp(r.skor,r.kktp)}</td><td><small>${new Date(r.created_at).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'})}</small></td></tr>`}).join('');
- el.innerHTML=`<div class="lvst"><div><b>${n}</b>Peserta selesai</div><div><b>${n?avg.toFixed(1):'-'}</b>Rata-rata</div><div><b>${n?mx:'-'}</b>Nilai tertinggi</div><div><b>${kt.length?Math.round(lu/kt.length*100)+'%':'-'}</b>Lulus KKTP</div></div>
- <div style="overflow:auto"><table class="lvt"><tr><th>#</th><th>Nama</th><th>Kelas</th><th>Mapel</th><th></th><th>Nilai</th><th>Status</th><th>Jam</th></tr>${rows||'<tr><td colspan=8>Belum ada siswa yang menyelesaikan ujian.</td></tr>'}</table></div>`}
+ const R=LV.rows.filter(x=>!LV.m||x.mapel===LV.m),isP=r=>r.st==='proses';
+ const D=R.filter(r=>!isP(r)).sort((a,b)=>(b.skor-a.skor)||(new Date(a.created_at)-new Date(b.created_at)));
+ const P=R.filter(isP).sort((a,b)=>(b.answered-a.answered)||String(a.nm).localeCompare(String(b.nm)));
+ const key=r=>[r.nm,r.kelas,r.mapel,r.ses,isP(r)?'p'+r.started_at:r.created_at].join('|'),first=LV.seen===null;if(first)LV.seen=new Set();
+ const n=D.length,avg=n?(D.reduce((a,r)=>a+(+r.skor||0),0)/n):0,mx=n?Math.max(...D.map(r=>+r.skor||0)):0,kt=D.filter(r=>r.kktp!=null),lu=kt.filter(r=>r.skor>=r.kktp).length;
+ const med=['🥇','🥈','🥉'],tm=d=>new Date(d).toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+ const row=(r,i)=>{const k=key(r),nw=!first&&!LV.seen.has(k);LV.seen.add(k);
+  if(isP(r)){const pc=r.tot?Math.round(r.answered/r.tot*100):0;
+   return`<tr class="${nw?'nw':''}"><td class="rk">•</td><td><b>${esc(r.nm)}</b></td><td>${r.kelas}</td><td>${esc(r.mapel)}</td><td><div class="lvbar"><i style="width:${pc}%;background:linear-gradient(90deg,#4da3ff,#a855f7)"></i></div></td><td class="sc" style="color:var(--mu)">…</td><td><b style="color:var(--y)">Mengerjakan</b><br><small>${r.answered}/${r.tot} terjawab</small></td><td><small>${tm(r.created_at)}</small></td></tr>`}
+  return`<tr class="${nw?'nw':''}"><td class="rk">${i<3?med[i]:i+1}</td><td><b>${esc(r.nm)}</b></td><td>${r.kelas}</td><td>${esc(r.mapel)}</td><td><div class="lvbar"><i style="width:${Math.max(0,Math.min(100,+r.skor||0))}%"></i></div></td><td class="sc">${r.skor}</td><td>${stKktp(r.skor,r.kktp)}</td><td><small>${tm(r.created_at)}</small></td></tr>`};
+ const rows=D.map(row).join('')+P.map(row).join('');
+ el.innerHTML=`<div class="lvst"><div><b style="color:var(--y)">${P.length}</b>Sedang mengerjakan</div><div><b>${n}</b>Sudah selesai</div><div><b>${n?avg.toFixed(1):'-'}</b>Rata-rata</div><div><b>${n?mx:'-'}</b>Nilai tertinggi</div><div><b>${kt.length?Math.round(lu/kt.length*100)+'%':'-'}</b>Lulus KKTP</div></div>
+ <div style="overflow:auto"><table class="lvt"><tr><th>#</th><th>Nama</th><th>Kelas</th><th>Mapel</th><th>Progres / Nilai</th><th>Nilai</th><th>Status</th><th>Jam</th></tr>${rows||'<tr><td colspan=8>Belum ada siswa yang memulai ujian.</td></tr>'}</table></div>`}
 function liveView(k){
  liveStop();LV.k=k||0;
  A.hidden=false;A.innerHTML=`<div class="wrap lvwrap"><div class="top"><h2 style="display:flex;align-items:center;gap:10px"><img src="${BANNER}" alt="" style="height:44px;width:auto">Live Score · SDN 1 Dauhwaru</h2><button class="s" onclick="location.hash='';location.reload()">Masuk E-Asesmen</button></div><div class="card" id="lvbox"></div></div>`;
