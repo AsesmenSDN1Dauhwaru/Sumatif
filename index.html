@@ -298,9 +298,12 @@ function prTrack(){try{if(!T||T.done||!me||me.role!=='siswa')return;
   PR.ch.subscribe(st=>{if(st==='SUBSCRIBED'){PR.ready=true;try{PR.ch.track(PR.st)}catch(_){}}})}
  else if(PR.ready)PR.ch.track(PR.st)}catch(e){console.warn('presence gagal',e)}}
 function prStop(){try{if(PR.ch){PR.ch.untrack();sb.removeChannel(PR.ch)}}catch(_){}PR.ch=null;PR.ready=false;PR.st=null}
-function lvBeat(){lvPing();prTrack()}
+const hbKey=()=>me.name+'|'+me.kelas+'|'+T.s.mapel;
+function hbSend(){try{if(!T||T.done)return;sb.rpc('live_hb',{p_k:hbKey(),p_nm:me.name,p_kelas:+me.kelas||0,p_mapel:String(T.s.mapel||''),p_ses:String(T.s.name||T.s.id||''),p_answered:Object.keys(T.a).length,p_tot:T.qs.length,p_started:T.t0}).then(r=>{if(r&&r.error)console.warn('live_hb gagal:',r.error.message)},e=>console.warn('live_hb error',e))}catch(e){console.warn(e)}}
+function hbEnd(){try{if(T&&me)sb.rpc('live_hb_end',{p_k:hbKey()}).then(()=>{},()=>{})}catch(_){}}
+function lvBeat(){lvPing();hbSend();prTrack()}
 const pick=c=>{T.a[T.i]=c;paint();lvBeat()},go=n=>{T.i=n;paint()};
-async function finish(){if(!T||T.busy||T.done)return;T.busy=true;clearInterval(tick);clearInterval(T.hb);prStop();
+async function finish(){if(!T||T.busy||T.done)return;T.busy=true;clearInterval(tick);clearInterval(T.hb);prStop();hbEnd();
  $('#test').innerHTML='<div class="stage"><div class="qa" style="display:flex;align-items:center;justify-content:center"><h2>Mengirim jawaban...</h2></div></div>';
  const{data:r,error}=await sb.rpc('kirim_ujian',{p_lt:me.lt,p_sid:T.s.id,p_ans:T.a});
  if(error){T.busy=false;$('#test').innerHTML=`<div class="stage"><div class="qa" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px"><h2 class="fail">Gagal mengirim jawaban</h2><div>${esc(error.message)}</div><button onclick="finish()">Kirim ulang</button></div></div>`;return}
@@ -308,7 +311,7 @@ async function finish(){if(!T||T.busy||T.done)return;T.busy=true;clearInterval(t
  $('#test').innerHTML=`<div class="stage"><div class="qa" style="text-align:center;display:flex;flex-direction:column;justify-content:center;gap:.6em"><div style="color:var(--mu)">${esc(T.nm)} · ${esc(T.s.mapel)} · ${esc(T.s.name)}</div><div>Nilai</div><div class="big">${r.skor}</div>${stKktp(r.skor,r.kktp,1)}<div>Benar ${r.benar} dari ${r.total} soal</div><div><button onclick="review()">Lihat Jawaban Benar dan Pembahasan</button> <button class="s" onclick="closeT()">Kembali</button></div></div></div>`;T.rh=$('#test').innerHTML}
 function review(){const{qs,a,keys}=T,bst=(k,i)=>subOf(i)==='tkp'?Object.keys(qs[i].o).sort((x,y)=>((k.p||{})[y]||0)-((k.p||{})[x]||0))[0]:k.k;
  $('#test').innerHTML=`<div class="stage"><div class="bar"><b>Jawaban Benar dan Pembahasan</b><button class="s" onclick="$('#test').innerHTML=T.rh">◀ Kembali ke skor</button></div><div class="qa">${qs.map((q,i)=>{const k=keys[i]||{},b=bst(k,i),u=a[i],t=subOf(i)==='tkp';return`<div class="card" style="margin:.6em 0"><div class="qt"><b style="color:var(--g)">${esc(T.s.mapel)} · No. ${i+1}</b><br>${rich(q.q)}</div>${Object.keys(q.o).map(c=>`<div style="padding:.4em .7em;margin:.3em 0;border-radius:8px;border:1px solid ${c===b?'var(--g)':c===u?'#ff5d73':'var(--ln)'};${c===b?'background:#103a2e;':c===u?'background:#3a1420;':''}"><b>${c}.</b> ${rich(q.o[c])}${t&&(k.p||{})[c]?` <small>(${k.p[c]} poin)</small>`:''}${c===u?' <small>← jawaban Anda</small>':''}${c===b?' <small class="pass">✔ jawaban terbaik/benar</small>':''}</div>`).join('')}<div style="margin-top:.6em;color:var(--mu)"><b>Jawaban Anda:</b> ${u||'Tidak dijawab'} · <b>Kunci:</b> ${b||'-'}<br><b>Pembahasan:</b> ${esc(k.e)||'Belum ada pembahasan pada file soal.'}</div></div>`}).join('')}</div></div>`}
-function closeT(){clearInterval(T&&T.hb);prStop();fsExit();$('#test').hidden=true;A.hidden=false;T=null;home()}
+function closeT(){clearInterval(T&&T.hb);prStop();hbEnd();fsExit();$('#test').hidden=true;A.hidden=false;T=null;home()}
 
 /* ---------- admin ---------- */
 const TABS=[['siswa','Siswa'],['paket','Paket Soal'],['sesi','Sesi Ujian'],['hasil','Hasil dan Nilai'],['live','Live Score']];
@@ -391,10 +394,11 @@ async function dlNilai(){
  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=nm;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
 
 /* ---------- LIVE SCORE (papan skor real-time) ---------- */
-const LV={on:false,k:0,m:'',rows:[],seen:null,timer:null,ch:null,pub:false,pc:null,pres:[]};
+const LV={on:false,k:0,m:'',rows:[],seen:null,timer:null,ch:null,pub:false,pc:null,pres:[],hb:[],hbErr:'',pst:''};
 const lvLink=()=>location.href.split('#')[0]+'#live'+(LV.k||'');
 function liveStop(){LV.on=false;clearInterval(LV.timer);LV.timer=null;if(LV.ch){try{sb.removeChannel(LV.ch)}catch(_){}LV.ch=null}if(LV.pc){try{sb.removeChannel(LV.pc)}catch(_){}LV.pc=null}LV.pres=[]}
 async function liveFetch(){
+ try{const h=await sb.rpc('live_proses');LV.hbErr=h.error?h.error.message:'';LV.hb=h.error?[]:(h.data||[]).filter(x=>!LV.k||+x.kelas===LV.k).map(x=>({nm:x.nm,kelas:+x.kelas,mapel:x.mapel||'',ses:x.ses||'',answered:+x.answered||0,tot:+x.tot||0,started_at:x.started_at,created_at:x.started_at||x.updated_at,st:'proses',skor:0}))}catch(e){LV.hbErr=String(e);LV.hb=[]}
  const r=await sb.rpc('live_score',{p_kelas:LV.k||0,p_mapel:''});
  if(r.error)return{err:r.error.message,rpc:1};
  return{rows:Array.isArray(r.data)?r.data:[]}}
@@ -404,22 +408,22 @@ function liveStart(boxId,pub){
  box.innerHTML=`<div class="lvh"><b style="font-size:16px"><span class="lvdot"></span>LIVE SCORE</b><span style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><small id="lvt" style="color:var(--mu)"></small>
   <select id="lvk" style="width:auto;margin:0" onchange="LV.k=+this.value;LV.m='';LV.seen=null;const l=document.getElementById('lvlink');if(l)l.value=lvLink();lvLoad()"><option value="0">Semua kelas</option>${[1,2,3,4,5,6].map(k=>`<option value="${k}"${LV.k===k?' selected':''}>Kelas ${k}</option>`).join('')}</select>
   <select id="lvm" style="width:auto;margin:0" onchange="LV.m=this.value;lvDraw()"><option value="">Semua mapel</option></select>
-  ${fsOK()?'<button class="s" onclick="fsToggle()">Layar penuh</button>':''}</span></div><div id="lvbody" style="margin-top:6px">Memuat...</div>`;
+  ${fsOK()?'<button class="s" onclick="fsToggle()">Layar penuh</button>':''}</span></div><div id="lvbody" style="margin-top:6px">Memuat...</div><small id="lvdiag" style="color:var(--mu);display:block;margin-top:8px"></small>`;
  lvLoad();LV.timer=setInterval(lvLoad,3000);
  try{LV.ch=sb.channel('lv'+Date.now()).on('postgres_changes',{event:'*',schema:'public',table:'results'},()=>lvLoad()).subscribe()}catch(_){}
  try{const pc=sb.channel('livescore-presence');LV.pc=pc;
-  pc.on('presence',{event:'sync'},()=>{if(LV.pc!==pc)return;const o=pc.presenceState(),a=[];Object.keys(o).forEach(k=>(o[k]||[]).forEach(m=>{if(m&&m.nm)a.push({nm:m.nm,kelas:+m.kelas||0,mapel:m.mapel||'',ses:m.ses||'',answered:+m.answered||0,tot:+m.tot||0,started_at:m.started_at,created_at:m.started_at,st:'proses',skor:0,pres:1})}));LV.pres=a;lvDraw()}).subscribe()}catch(e){console.warn('presence board gagal',e)}}
+  pc.on('presence',{event:'sync'},()=>{if(LV.pc!==pc)return;const o=pc.presenceState(),a=[];Object.keys(o).forEach(k=>(o[k]||[]).forEach(m=>{if(m&&m.nm)a.push({nm:m.nm,kelas:+m.kelas||0,mapel:m.mapel||'',ses:m.ses||'',answered:+m.answered||0,tot:+m.tot||0,started_at:m.started_at,created_at:m.started_at,st:'proses',skor:0,pres:1})}));LV.pres=a;lvDraw()}).subscribe(st=>{LV.pst=st})}catch(e){console.warn('presence board gagal',e)}}
 async function lvLoad(){
  if(!LV.on)return;const r=await liveFetch(),el=document.getElementById('lvbody');if(!LV.on||!el)return;
  if(r.err){el.innerHTML=r.rpc?'<p class="fail">Live Score belum aktif di database. Jalankan file <b>live_score.sql</b> di Supabase (menu SQL Editor), lalu muat ulang halaman.</p><small>'+esc(r.err)+'</small>':'<p class="fail">Gagal memuat: '+esc(r.err)+'</p>';return}
  LV.rows=r.rows;
- const ms=[...new Set(LV.rows.concat(LV.pres||[]).map(x=>x.mapel).filter(Boolean))].sort(),sel=document.getElementById('lvm');
+ const ms=[...new Set(LV.rows.concat(LV.pres||[],LV.hb||[]).map(x=>x.mapel).filter(Boolean))].sort(),sel=document.getElementById('lvm');
  if(sel){const cur=ms.includes(LV.m)?LV.m:'';LV.m=cur;const h='<option value="">Semua mapel</option>'+ms.map(m=>`<option value="${esc(m)}"${m===cur?' selected':''}>${esc(m)}</option>`).join('');if(sel.innerHTML!==h)sel.innerHTML=h}
- lvDraw();const t=document.getElementById('lvt');if(t)t.textContent='Diperbarui '+new Date().toLocaleTimeString('id-ID')}
+ lvDraw();const dg=document.getElementById('lvdiag');if(dg)dg.innerHTML='Sambungan realtime: '+(LV.pst||'-')+' · terdeteksi realtime: '+(LV.pres||[]).length+' · terdeteksi database: '+(LV.hb||[]).length+(LV.hbErr?' · <span class="fail">live_hb belum dipasang di Supabase: '+esc(LV.hbErr)+'</span>':'');const t=document.getElementById('lvt');if(t)t.textContent='Diperbarui '+new Date().toLocaleTimeString('id-ID')}
 function lvDraw(){
  const el=document.getElementById('lvbody');if(!el)return;
  const isP=r=>r.st==='proses',sm=(a,b)=>String(a.nm)===String(b.nm)&&+a.kelas===+b.kelas&&String(a.mapel)===String(b.mapel);
- const pres=(LV.pres||[]).filter(p=>(!LV.k||p.kelas===LV.k)&&!LV.rows.some(x=>sm(x,p)&&(isP(x)||(p.started_at&&new Date(x.created_at)>=new Date(p.started_at)-5000))));
+ const allp=(LV.pres||[]).concat((LV.hb||[]).filter(h=>!(LV.pres||[]).some(p=>sm(p,h)))),pres=allp.filter(p=>(!LV.k||p.kelas===LV.k)&&!LV.rows.some(x=>sm(x,p)&&(isP(x)||(p.started_at&&new Date(x.created_at)>=new Date(p.started_at)-5000))));
  const R=LV.rows.concat(pres).filter(x=>!LV.m||x.mapel===LV.m);
  const D=R.filter(r=>!isP(r)).sort((a,b)=>(b.skor-a.skor)||(new Date(a.created_at)-new Date(b.created_at)));
  const P=R.filter(isP).sort((a,b)=>(b.answered-a.answered)||String(a.nm).localeCompare(String(b.nm)));
